@@ -1,5 +1,6 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import BrandMark from './BrandMark';
 import { colors, fonts, fontSizes, radii, spacing } from '../lib/theme';
 
 export default function Header<T extends string>({
@@ -16,9 +17,7 @@ export default function Header<T extends string>({
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.xl }]}>
       <View style={styles.logoRow}>
-        {/* eslint-disable-next-line @typescript-eslint/no-require-imports */}
-        <Image source={require('../assets/icon.png')} style={styles.logo} />
-        <Text style={styles.wordmark}>mealio</Text>
+        <BrandMark variant="inline" />
       </View>
 
       <View style={styles.segmented}>
@@ -46,21 +45,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screenPadding,
   },
   logoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
     marginBottom: spacing.xl,
-  },
-  logo: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-  },
-  wordmark: {
-    fontFamily: fonts.heading,
-    fontSize: fontSizes.logo,
-    letterSpacing: -0.5,
-    color: colors.primary,
   },
   segmented: {
     flexDirection: 'row',

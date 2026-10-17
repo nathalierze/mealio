@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
+import BrandMark from '../components/BrandMark';
 import { colors, fonts, fontSizes, radii, spacing } from '../lib/theme';
 
 function friendlyError(message: string): string {
@@ -74,12 +75,13 @@ export default function LoginScreen() {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
+        <BrandMark variant="large" />
         <Text style={styles.title}>Code eingeben</Text>
         <Text style={styles.body}>Wir haben einen Code an {email} geschickt.</Text>
         <TextInput
           style={[styles.input, styles.codeInput]}
           placeholder="12345678"
-          placeholderTextColor="#A8A49C"
+          placeholderTextColor={colors.textMuted}
           keyboardType="number-pad"
           autoFocus
           maxLength={8}
@@ -89,7 +91,7 @@ export default function LoginScreen() {
         {error && <Text style={styles.error}>{error}</Text>}
         <TouchableOpacity style={styles.button} onPress={verifyCode} disabled={loading}>
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.onPrimary} />
           ) : (
             <Text style={styles.buttonText}>Anmelden</Text>
           )}
@@ -115,12 +117,12 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text style={styles.title}>🌿 Mealio</Text>
+      <BrandMark variant="large" />
       <Text style={styles.body}>Melde dich mit einem Code per E-Mail an – kein Passwort nötig.</Text>
       <TextInput
         style={styles.input}
         placeholder="E-Mail-Adresse"
-        placeholderTextColor="#A8A49C"
+        placeholderTextColor={colors.textMuted}
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="email-address"
@@ -130,7 +132,7 @@ export default function LoginScreen() {
       {error && <Text style={styles.error}>{error}</Text>}
       <TouchableOpacity style={styles.button} onPress={sendCode} disabled={loading}>
         {loading ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={colors.onPrimary} />
         ) : (
           <Text style={styles.buttonText}>Code senden</Text>
         )}

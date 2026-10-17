@@ -38,7 +38,7 @@ Platzhalter-Farben für Rezeptkacheln ohne Foto: `#F6E2B3`, `#F1D2BE`, `#EFC9A6`
 - Seitenrand links/rechts: 20 px
 - Abstand oben (unter der Statusleiste): Safe-Area + ca. 16 px
 - Abstände zwischen Elementen: 4 / 8 / 12 / 14 / 18 / 22 px
-- Eckenradien: Karten 18, Buttons 16, Segmented Control außen 14 / innen 11, Chips voll rund (Höhe/2)
+- Eckenradien: Karten 18, Buttons 16, Segmented Control außen 14 / innen 11, Chips voll rund (Höhe/2), kleines App-Icon (Kopfbereich) 8
 - Kartenschatten: 1 px Linie `borderSoft` unten + weicher Schatten (rgba(31,77,58,0.06), Blur 16, y 6)
 - Touch-Ziele mindestens 44 px
 
@@ -90,6 +90,13 @@ Fest unten, Hintergrund `background`, Trennlinie oben `borderSoft`, Innenabstand
   3. **Tags**: weiße Karte, Zeilen (48 hoch) mit Name, Anzahl Rezepte, Pfeil → bearbeiten; unten „+ Neuer Tag“ (`quantity`).
   4. **Todoist**: Zeile „Verbindung“ mit Badge „Verbunden“ (`success`), Zeile „Zielprojekt“ mit Projektname + Pfeil.
   5. **Account**: E-Mail-Adresse, „Abmelden“ in `danger`.
+
+## Login-Screen
+
+- Zentrierter Inhalt (E-Mail-Schritt und Code-Schritt identisch aufgebaut): `BrandMark`-Komponente (Variante `large`) oben, darunter der Rest des Formulars.
+- `BrandMark` (`large`): App-Icon 96×96 px, Radius `radii.card`, darunter mit 12 px Abstand der Schriftzug „mealio“ (Fraunces, wie im Kopfbereich), darunter mit 4 px Abstand der Slogan „Off your mind, onto your plate.“ (Figtree, 13 px, kursiv, `textMuted`).
+- `BrandMark` (`inline`, im gemeinsamen Kopfbereich): App-Icon 34×34 px, Radius `radii.icon`, Schriftzug daneben – unverändert gegenüber vorher, nur als gemeinsame Komponente mit der `large`-Variante extrahiert.
+- Darunter der bestehende Screen-Titel bzw. Hinweistext (Code-Schritt: „Code eingeben“ + „Wir haben einen Code an … geschickt.“; E-Mail-Schritt: nur der Hinweistext, kein zusätzlicher Titel, da `mealio` selbst die Überschrift ist).
 
 ## Rezept hinzufügen (Bottom-Sheet)
 

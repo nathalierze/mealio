@@ -70,6 +70,7 @@ export const radii = {
   segmentedOuter: 14,
   segmentedInner: 11,
   chip: 999,
+  icon: 8,
 } as const;
 
 export const minTouchTarget = 44;
