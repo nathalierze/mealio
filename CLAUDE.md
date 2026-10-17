@@ -4,7 +4,7 @@
 
 Eine Meal-Planner-App, die Mental Load bei der Essensplanung reduziert: eigene Rezepte (Heavy Rotation) auswählen → Wochenplan zusammenstellen → Einkaufsliste automatisch fertig.
 
-**Ziel (Stand jetzt):** Privater Gebrauch für 2 Personen (Nathalie + Mann), bereitgestellt als Web-App, die per „Zum Home-Bildschirm" auf dem iPhone wie eine App genutzt wird. Kein App-Store-Release vorerst.
+**Ziel (Stand jetzt):** Privater Gebrauch für 2 Personen als ersten Schritt, bereitgestellt als Web-App, die per „Zum Home-Bildschirm" auf dem iPhone wie eine App genutzt wird. Kein App-Store-Release vorerst.
 
 **Später möglich (kein separater Branch, dieselbe Codebasis):** Eine kommerzielle Version mit echtem App-Store-Release (iOS + Android) soll jederzeit aus genau diesem Code heraus möglich sein, ohne Neuentwicklung. Store-spezifische Punkte (Google Play Console, Branding/App-Icon-Feinschliff, Monetarisierung) sind deshalb bewusst auf „später" verschoben, nicht gestrichen.
 
