@@ -2,12 +2,6 @@
 
 A meal planner that reduces the mental load of deciding what to cook: pick recipes from your own collection, build a weekly plan, and get a shopping list generated automatically.
 
-## Screenshots
-
-| Recipes | Weekly Plan | Shopping List | Settings |
-|---|---|---|---|
-| ![Recipes](docs/screenshots/recipes.png) | ![Weekly Plan](docs/screenshots/weekly-plan.png) | ![Shopping List](docs/screenshots/shopping-list.png) | ![Settings](docs/screenshots/settings.png) |
-
 ## Features
 
 - **Household-based sharing** – multiple people join a household via an invite code and share the same recipes, weekly plan, and shopping list.
