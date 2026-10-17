@@ -1,5 +1,14 @@
 # Mealio – Projektkontext für Claude Code
 
+## ⚠️ Öffentliches Repo – Sicherheitsregeln
+
+- **Dieses Repo ist öffentlich.** Jeder Commit ist für alle sichtbar, auch rückwirkend in der History – ein späteres "Löschen" einer Datei entfernt sie nicht aus vergangenen Commits.
+- **Niemals committen:** `.env`-Dateien, API-Keys, der `service_role`-Key, App-Passwörter, Todoist-Tokens, echte E-Mail-Adressen, Einladungscodes oder andere personenbezogene Daten.
+- **Secrets gehören ausschließlich** in Supabase Secrets (Edge Functions) oder Netlify-Umgebungsvariablen – nie in Code oder Migrationen.
+- **Nur `EXPO_PUBLIC_SUPABASE_URL` und `EXPO_PUBLIC_SUPABASE_ANON_KEY` dürfen im Frontend vorkommen** (bewusst öffentlicher, RLS-geschützter Anon-Key – alles andere bleibt serverseitig in Edge Functions).
+- **Vor jedem Commit prüfen**, ob neue Dateien sensible Inhalte enthalten. Im Zweifel nachfragen, nicht raten.
+- **GitHub Push Protection ist aktiv.** Wird ein Push blockiert, niemals umgehen (kein `--no-verify`, kein Force-Push zum Durchdrücken) – stattdessen das Secret aus der Datei entfernen und die Nutzerin informieren.
+
 ## Was das Projekt ist
 
 Eine Meal-Planner-App, die Mental Load bei der Essensplanung reduziert: eigene Rezepte (Heavy Rotation) auswählen → Wochenplan zusammenstellen → Einkaufsliste automatisch fertig.
@@ -12,7 +21,7 @@ Eine Meal-Planner-App, die Mental Load bei der Essensplanung reduziert: eigene R
 
 ## Status
 
-Funktionierender Web-Prototyp existiert weiterhin (HTML/JS/CSS im Repo-Root, unverändert). Die Migration zu React Native/Expo läuft aktiv im Branch `migration-react-native` (Code in `/app`) und ist kein Prototyp mehr, sondern die neue Zielarchitektur in Arbeit.
+Der alte HTML/JS/CSS-Web-Prototyp wurde vollständig durch die React-Native/Expo-App in `/app` ersetzt und existiert in diesem Repo nicht mehr (Referenz dazu nur noch im separaten, privat archivierten Alt-Repo). Entwickelt wird direkt auf `main`, kein separater Migrations-Branch mehr.
 
 **Aktueller Implementierungsstand (Ende Session, siehe Commits in `/app`):**
 - ✅ Expo-Projekt (TypeScript) + Supabase JS Client + Env-Setup
@@ -170,7 +179,7 @@ Schema-Ergänzungen (geplant): `households.base_ingredients` (text[], ersetzt di
 
 - MacBook Air 13 (Apple Silicon), macOS Tahoe
 - Node.js, Git, VS Code mit Claude Code Extension
-- GitHub-Repo: `nathalierze/helloFresh` (privat, HTTPS-Auth über `gh`)
+- GitHub-Repo: `github.com/nathalierze/mealio` (öffentlich, HTTPS-Auth über `gh`), Branch `main` ist zugleich der Netlify-Production-Branch
 
 ## Aktuelle Kosten-Leitplanken
 
