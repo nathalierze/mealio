@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(supabase db reset*)",
+      "Bash(*DROP TABLE*)",
+      "Bash(*TRUNCATE*)",
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ],
+    "ask": [
+      "Bash(supabase db push*)",
+      "Bash(supabase migration*)",
+      "Bash(supabase functions deploy*)"
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Mealio",
+  "short_name": "Mealio",
+  "description": "Rezepte, Wochenplan und Einkaufsliste für zuhause",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F4EF",
+  "theme_color": "#2D6A4F",
+  "lang": "de",
+  "icons": [
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Mealio",
+    "slug": "app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F7F4EF",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1F4D3A",
+        "foregroundImage": "./assets/icon.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/icon.png",
+      "name": "Mealio",
+      "shortName": "Mealio",
+      "themeColor": "#2D6A4F",
+      "backgroundColor": "#F7F4EF",
+      "lang": "de"
+    },
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}

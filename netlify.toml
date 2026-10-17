@@ -1,0 +1,31 @@
+[build]
+  base = "app"
+  command = "npx expo export --platform web"
+  publish = "dist"
+
+# Single-Page-App: jede Route liefert index.html, die App übernimmt dann
+# clientseitig. Nötig, damit z.B. ein Reload nicht in einem 404 landet.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# index.html und das Manifest sollen nie aus dem Cache kommen, damit nach
+# einem Deploy sofort die neue Version geladen wird (referenziert sonst
+# einen veralteten, gehashten JS-Bundle-Namen).
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+# Gehashte JS-Bundles ändern ihren Dateinamen bei jeder Änderung - können
+# daher gefahrlos langfristig gecacht werden.
+[[headers]]
+  for = "/_expo/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
