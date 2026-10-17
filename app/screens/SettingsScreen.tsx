@@ -86,6 +86,13 @@ export default function SettingsScreen({
     recipeCount: number;
   } | null>(null);
 
+  const [pendingDelete, setPendingDelete] = useState<{
+    isLastMember: boolean;
+    recipeCount: number;
+    otherMembers: number;
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     loadMembers();
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
@@ -271,7 +278,7 @@ export default function SettingsScreen({
     }
   }
 
-  async function prepareLeaveOrJoin(type: 'join' | 'leave', code?: string) {
+  async function getLastMemberInfo(): Promise<{ isLastMember: boolean; recipeCount: number }> {
     const isLastMember = members.length <= 1;
     let recipeCount = 0;
     if (isLastMember) {
@@ -281,7 +288,12 @@ export default function SettingsScreen({
         .eq('household_id', household.id);
       recipeCount = count ?? 0;
     }
-    setPendingAction({ type, code, isLastMember, recipeCount });
+    return { isLastMember, recipeCount };
+  }
+
+  async function prepareLeaveOrJoin(type: 'join' | 'leave', code?: string) {
+    const info = await getLastMemberInfo();
+    setPendingAction({ type, code, ...info });
   }
 
   function startJoin() {
@@ -327,6 +339,23 @@ export default function SettingsScreen({
     }
     setJoinCode('');
     await onHouseholdSwitched();
+  }
+
+  async function startDeleteAccount() {
+    const info = await getLastMemberInfo();
+    setPendingDelete({ ...info, otherMembers: Math.max(members.length - 1, 0) });
+  }
+
+  async function confirmDeleteAccount() {
+    setDeleting(true);
+    const { error } = await supabase.functions.invoke('delete-account');
+    setDeleting(false);
+    if (error) {
+      notify('Fehler beim Löschen', error.message);
+      return;
+    }
+    setPendingDelete(null);
+    await supabase.auth.signOut();
   }
 
   const selectedProject = projects.find((p) => p.id === household.todoist_project_id);
@@ -575,6 +604,9 @@ export default function SettingsScreen({
           <Pressable onPress={() => supabase.auth.signOut()} style={styles.dangerRow}>
             <Text style={styles.dangerText}>Abmelden</Text>
           </Pressable>
+          <Pressable onPress={startDeleteAccount} style={styles.dangerRow}>
+            <Text style={styles.dangerText}>Account löschen</Text>
+          </Pressable>
         </Card>
       </ScrollView>
 
@@ -632,6 +664,22 @@ export default function SettingsScreen({
         destructive={pendingAction?.isLastMember ?? false}
         onConfirm={confirmPendingAction}
         onCancel={() => setPendingAction(null)}
+      />
+
+      <ConfirmDialog
+        visible={pendingDelete !== null}
+        title="Account löschen?"
+        message={
+          pendingDelete?.isLastMember
+            ? `Du bist das letzte Mitglied. Dein Haushalt und ${pendingDelete.recipeCount} Rezept${pendingDelete.recipeCount !== 1 ? 'e' : ''} werden zusammen mit deinem Account endgültig gelöscht.`
+            : `Dein Account wird gelöscht. Rezepte und Plan bleiben für die anderen ${pendingDelete?.otherMembers} Mitglied${pendingDelete?.otherMembers !== 1 ? 'er' : ''} erhalten.`
+        }
+        confirmLabel="Account löschen"
+        destructive
+        requireTypedWord={pendingDelete?.isLastMember ? 'löschen' : undefined}
+        loading={deleting}
+        onConfirm={confirmDeleteAccount}
+        onCancel={() => setPendingDelete(null)}
       />
     </View>
   );

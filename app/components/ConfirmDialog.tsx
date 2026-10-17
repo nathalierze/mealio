@@ -1,4 +1,5 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, fontSizes, radii, spacing } from '../lib/theme';
 
@@ -10,6 +11,8 @@ export default function ConfirmDialog({
   message,
   confirmLabel,
   destructive = false,
+  requireTypedWord,
+  loading = false,
   onConfirm,
   onCancel,
 }: {
@@ -18,16 +21,25 @@ export default function ConfirmDialog({
   message: string;
   confirmLabel: string;
   destructive?: boolean;
+  /** Bestätigen-Button bleibt deaktiviert, bis dieses Wort eingetippt wurde. */
+  requireTypedWord?: string;
+  loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const [typedValue, setTypedValue] = useState('');
 
   if (!visible) return null;
 
+  const typedMismatch =
+    requireTypedWord !== undefined &&
+    typedValue.trim().toLowerCase() !== requireTypedWord.toLowerCase();
+  const confirmDisabled = loading || typedMismatch;
+
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
-      <Pressable style={styles.backdrop} onPress={onCancel}>
+      <Pressable style={styles.backdrop} onPress={loading ? undefined : onCancel}>
         <Pressable
           style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}
           onPress={() => {}}
@@ -35,13 +47,35 @@ export default function ConfirmDialog({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
 
+          {requireTypedWord !== undefined && (
+            <TextInput
+              style={styles.input}
+              placeholder={`Tippe „${requireTypedWord}" zum Bestätigen`}
+              placeholderTextColor={colors.textMuted}
+              value={typedValue}
+              onChangeText={setTypedValue}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!loading}
+            />
+          )}
+
           <Pressable
-            style={[styles.confirmButton, destructive && styles.confirmButtonDestructive]}
+            style={[
+              styles.confirmButton,
+              destructive && styles.confirmButtonDestructive,
+              confirmDisabled && styles.confirmButtonDisabled,
+            ]}
             onPress={onConfirm}
+            disabled={confirmDisabled}
           >
-            <Text style={styles.confirmButtonText}>{confirmLabel}</Text>
+            {loading ? (
+              <ActivityIndicator color={colors.onPrimary} />
+            ) : (
+              <Text style={styles.confirmButtonText}>{confirmLabel}</Text>
+            )}
           </Pressable>
-          <Pressable style={styles.cancelButton} onPress={onCancel}>
+          <Pressable style={styles.cancelButton} onPress={onCancel} disabled={loading}>
             <Text style={styles.cancelButtonText}>Abbrechen</Text>
           </Pressable>
         </Pressable>
@@ -75,6 +109,18 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: spacing.xl,
   },
+  input: {
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radii.button,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontFamily: fonts.body,
+    fontSize: fontSizes.bodySmall,
+    color: colors.text,
+    backgroundColor: colors.surface,
+    marginBottom: spacing.md,
+  },
   confirmButton: {
     height: 52,
     borderRadius: radii.button,
@@ -85,6 +131,9 @@ const styles = StyleSheet.create({
   },
   confirmButtonDestructive: {
     backgroundColor: colors.danger,
+  },
+  confirmButtonDisabled: {
+    opacity: 0.5,
   },
   confirmButtonText: {
     fontFamily: fonts.bodyBold,
