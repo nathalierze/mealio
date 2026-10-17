@@ -1,4 +1,4 @@
-# Mealplanner App – Projektkontext für Claude Code
+# Mealio – Projektkontext für Claude Code
 
 ## Was das Projekt ist
 
