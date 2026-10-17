@@ -93,6 +93,7 @@ Externe APIs (NUR von Edge Functions aufgerufen, nie direkt vom Client)
 - Rezepte sind pro Haushalt, nicht global – jeder Haushalt sieht nur seine eigenen Rezepte. Geteilte Rezeptvorschläge für alle Haushalte sind ein bewusstes Later-Feature.
 - Zutaten werden strukturiert gespeichert (menge, einheit, name) statt als ein Freitext-String – Grundlage für die spätere automatische Aggregation in der Einkaufsliste.
 - Bilder bleiben vorerst bei URLs, kein Supabase Storage (explizit vertagt).
+- **Ein Nutzer gehört immer zu genau einem Haushalt.** Nachträglicher Wechsel läuft ausschließlich über die RPCs `join_household(p_invite_code)` / `leave_household()` (security definer, ermitteln den Nutzer über `auth.uid()`, nie per Parameter) – nie durch direkte Inserts/Deletes auf `household_members` vom Client. Verlassen ohne neuen Code legt automatisch einen neuen, leeren Haushalt an (wie beim ersten Login). Ist der Nutzer das letzte Mitglied, wird der alte Haushalt komplett gelöscht (alle `household_id`-FKs haben `on delete cascade`, keine Rezept-Übernahme in den neuen Haushalt). Beitritt mit ungültigem Code ist auf 5 Fehlversuche pro 15 Minuten begrenzt (Tabelle `household_join_attempts`, kein Client-Zugriff).
 
 Schema: `households`, `household_members`, `recipes.household_id`, `recipe_ingredients`, `weekly_plan` – siehe `supabase/migrations/`.
 

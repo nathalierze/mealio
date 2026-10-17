@@ -92,6 +92,12 @@ export default function HomeScreen({
       <SettingsScreen
         household={household}
         onHouseholdChange={onHouseholdChange}
+        onHouseholdSwitched={async () => {
+          await onHouseholdChange();
+          setListKey((k) => k + 1);
+          setActiveView('recipes');
+          setShowSettings(false);
+        }}
         onBack={() => setShowSettings(false)}
       />
     );

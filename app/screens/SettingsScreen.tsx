@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +20,7 @@ import { useTags, type Tag } from '../hooks/useTags';
 import Card from '../components/Card';
 import Chip from '../components/Chip';
 import PrimaryButton from '../components/PrimaryButton';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { colors, fonts, fontSizes, radii, spacing } from '../lib/theme';
 import type { Household } from '../types/household';
 
@@ -43,10 +47,12 @@ function initialsFor(email: string | null): string {
 export default function SettingsScreen({
   household,
   onHouseholdChange,
+  onHouseholdSwitched,
   onBack,
 }: {
   household: Household;
   onHouseholdChange: () => Promise<void>;
+  onHouseholdSwitched: () => Promise<void>;
   onBack: () => void;
 }) {
   const insets = useSafeAreaInsets();
@@ -68,6 +74,17 @@ export default function SettingsScreen({
   const [newTagName, setNewTagName] = useState('');
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
   const [editingTagName, setEditingTagName] = useState('');
+
+  const [joinSheetVisible, setJoinSheetVisible] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+  const [joining, setJoining] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{
+    type: 'join' | 'leave';
+    code?: string;
+    isLastMember: boolean;
+    recipeCount: number;
+  } | null>(null);
 
   useEffect(() => {
     loadMembers();
@@ -254,6 +271,64 @@ export default function SettingsScreen({
     }
   }
 
+  async function prepareLeaveOrJoin(type: 'join' | 'leave', code?: string) {
+    const isLastMember = members.length <= 1;
+    let recipeCount = 0;
+    if (isLastMember) {
+      const { count } = await supabase
+        .from('recipes')
+        .select('id', { count: 'exact', head: true })
+        .eq('household_id', household.id);
+      recipeCount = count ?? 0;
+    }
+    setPendingAction({ type, code, isLastMember, recipeCount });
+  }
+
+  function startJoin() {
+    const code = joinCode.trim();
+    if (!code) return;
+    setJoinSheetVisible(false);
+    prepareLeaveOrJoin('join', code);
+  }
+
+  function startLeave() {
+    prepareLeaveOrJoin('leave');
+  }
+
+  async function confirmPendingAction() {
+    if (!pendingAction) return;
+    const { type, code } = pendingAction;
+    setPendingAction(null);
+
+    if (type === 'leave') {
+      setLeaving(true);
+      const { error } = await supabase.rpc('leave_household');
+      setLeaving(false);
+      if (error) {
+        notify('Fehler', error.message);
+        return;
+      }
+      setJoinCode('');
+      await onHouseholdSwitched();
+      return;
+    }
+
+    setJoining(true);
+    const { data, error } = await supabase.rpc('join_household', { p_invite_code: code });
+    setJoining(false);
+    if (error) {
+      notify('Fehler', error.message);
+      return;
+    }
+    const result = Array.isArray(data) ? data[0] : data;
+    if (result?.status === 'already_member') {
+      notify('Schon dabei', `Du bist bereits Mitglied von „${result.household_name ?? 'diesem Haushalt'}".`);
+      return;
+    }
+    setJoinCode('');
+    await onHouseholdSwitched();
+  }
+
   const selectedProject = projects.find((p) => p.id === household.todoist_project_id);
 
   return (
@@ -298,6 +373,23 @@ export default function SettingsScreen({
               <ActivityIndicator color={colors.onPrimary} />
             ) : (
               <Text style={styles.regenerateText}>Code neu generieren</Text>
+            )}
+          </Pressable>
+
+          <View style={styles.householdDivider} />
+
+          <Pressable onPress={() => setJoinSheetVisible(true)} style={styles.switchRow}>
+            <Feather name="repeat" size={16} color={colors.onPrimary} />
+            <Text style={styles.switchRowText}>Anderem Haushalt beitreten</Text>
+          </Pressable>
+          <Pressable onPress={startLeave} disabled={leaving} style={styles.switchRow}>
+            {leaving ? (
+              <ActivityIndicator color={colors.onPrimary} size="small" />
+            ) : (
+              <>
+                <Feather name="log-out" size={16} color={colors.onPrimary} />
+                <Text style={styles.switchRowText}>Haushalt verlassen</Text>
+              </>
             )}
           </Pressable>
         </Card>
@@ -485,6 +577,62 @@ export default function SettingsScreen({
           </Pressable>
         </Card>
       </ScrollView>
+
+      <Modal
+        visible={joinSheetVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setJoinSheetVisible(false)}
+      >
+        <Pressable style={styles.backdrop} onPress={() => setJoinSheetVisible(false)} />
+        <KeyboardAvoidingView
+          style={styles.sheetWrap}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.sheet}>
+            <View style={styles.handle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Anderem Haushalt beitreten</Text>
+              <Pressable onPress={() => setJoinSheetVisible(false)} hitSlop={8}>
+                <Feather name="x" size={22} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            <Text style={[styles.hint, { paddingHorizontal: spacing.screenPadding }]}>
+              Du verlässt deinen aktuellen Haushalt und wechselst in den neuen. Eigene Rezepte
+              werden nicht übernommen.
+            </Text>
+            <View style={styles.sheetForm}>
+              <TextInput
+                style={styles.input}
+                placeholder="Einladungscode"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                value={joinCode}
+                onChangeText={setJoinCode}
+                onSubmitEditing={startJoin}
+              />
+              <PrimaryButton label="Beitreten" onPress={startJoin} disabled={joining} />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <ConfirmDialog
+        visible={pendingAction !== null}
+        title={pendingAction?.type === 'leave' ? 'Haushalt verlassen?' : 'Haushalt wechseln?'}
+        message={
+          pendingAction?.isLastMember
+            ? `Du bist das letzte Mitglied. Dein Haushalt und ${pendingAction.recipeCount} Rezept${pendingAction.recipeCount !== 1 ? 'e' : ''} werden endgültig gelöscht.`
+            : pendingAction?.type === 'leave'
+              ? 'Du bekommst einen neuen, leeren Haushalt. Deine Rezepte bleiben im alten Haushalt für die anderen Mitglieder erhalten.'
+              : 'Du verlässt deinen aktuellen Haushalt und trittst dem neuen bei. Eigene Rezepte werden nicht übernommen.'
+        }
+        confirmLabel={pendingAction?.type === 'leave' ? 'Verlassen' : 'Beitreten'}
+        destructive={pendingAction?.isLastMember ?? false}
+        onConfirm={confirmPendingAction}
+        onCancel={() => setPendingAction(null)}
+      />
     </View>
   );
 }
@@ -586,6 +734,17 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.meta,
     color: colors.accent,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: 40,
+  },
+  switchRowText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.bodySmall,
+    color: colors.onPrimary,
   },
   hint: {
     fontFamily: fonts.body,
@@ -697,5 +856,47 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.bodySmall,
     color: colors.danger,
+  },
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(31,77,58,0.4)',
+  },
+  sheetWrap: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  sheet: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xl,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    alignSelf: 'center',
+    marginBottom: spacing.md,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.screenPadding,
+    marginBottom: spacing.sm,
+  },
+  sheetTitle: {
+    fontFamily: fonts.heading,
+    fontSize: 22,
+    color: colors.primary,
+  },
+  sheetForm: {
+    paddingHorizontal: spacing.screenPadding,
+    paddingTop: spacing.md,
+    gap: spacing.md,
   },
 });
