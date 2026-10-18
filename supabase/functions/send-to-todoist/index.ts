@@ -4,12 +4,16 @@
 // sein eigenes Todoist-Konto über die Einstellungen in der App.
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
+import { handleCorsPreflight, withCorsHeaders } from "../_shared/cors.ts";
 
 export default {
   // auth: "user" (Default) validiert das JWT der App-Session und liefert in
   // ctx.supabase einen RLS-gescopten Client - so sehen wir automatisch nur
   // den Haushalt des aufrufenden Nutzers.
-  fetch: withSupabase({ auth: "user" }, async (req, ctx) => {
+  fetch: async (req: Request) => {
+    const preflight = handleCorsPreflight(req);
+    if (preflight) return preflight;
+    const res = await withSupabase({ auth: "user", cors: "disabled" }, async (req, ctx) => {
     const { items } = await req.json();
     if (!Array.isArray(items) || items.length === 0) {
       return Response.json({ error: "items ist erforderlich." }, { status: 400 });
@@ -64,5 +68,7 @@ export default {
     }
 
     return Response.json({ success: true, count: items.length });
-  }),
+    })(req);
+    return withCorsHeaders(req, res);
+  },
 };

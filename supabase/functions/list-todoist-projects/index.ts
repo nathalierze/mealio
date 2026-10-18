@@ -3,9 +3,13 @@
 // "Eingang" landen).
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
+import { handleCorsPreflight, withCorsHeaders } from "../_shared/cors.ts";
 
 export default {
-  fetch: withSupabase({ auth: "user" }, async (_req, ctx) => {
+  fetch: async (req: Request) => {
+    const preflight = handleCorsPreflight(req);
+    if (preflight) return preflight;
+    const res = await withSupabase({ auth: "user", cors: "disabled" }, async (_req, ctx) => {
     const { data: household, error } = await ctx.supabase
       .from("households")
       .select("todoist_api_token")
@@ -38,5 +42,7 @@ export default {
     }));
 
     return Response.json({ projects });
-  }),
+    })(req);
+    return withCorsHeaders(req, res);
+  },
 };

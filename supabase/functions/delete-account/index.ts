@@ -12,12 +12,16 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
 import { createClient } from "@supabase/supabase-js";
+import { handleCorsPreflight, withCorsHeaders } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 export default {
-  fetch: withSupabase({ auth: "user" }, async (_req, ctx) => {
+  fetch: async (req: Request) => {
+    const preflight = handleCorsPreflight(req);
+    if (preflight) return preflight;
+    const res = await withSupabase({ auth: "user", cors: "disabled" }, async (_req, ctx) => {
     const { data: userData, error: userError } = await ctx.supabase.auth.getUser();
     if (userError || !userData?.user) {
       return Response.json({ error: "Nicht angemeldet." }, { status: 401 });
@@ -35,5 +39,7 @@ export default {
     }
 
     return Response.json({ success: true });
-  }),
+    })(req);
+    return withCorsHeaders(req, res);
+  },
 };

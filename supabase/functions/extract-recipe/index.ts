@@ -2,6 +2,7 @@
 // Der Spoonacular-API-Key bleibt serverseitig (Secret), landet nie im Client.
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
+import { handleCorsPreflight, withCorsHeaders } from "../_shared/cors.ts";
 
 const SPOONACULAR_API_KEY = Deno.env.get("SPOONACULAR_API_KEY");
 
@@ -22,7 +23,10 @@ type SpoonacularRecipe = {
 };
 
 export default {
-  fetch: withSupabase({ auth: ["publishable", "secret"] }, async (req) => {
+  fetch: async (req: Request) => {
+    const preflight = handleCorsPreflight(req);
+    if (preflight) return preflight;
+    const res = await withSupabase({ auth: ["publishable", "secret"], cors: "disabled" }, async (req) => {
     if (!SPOONACULAR_API_KEY) {
       return Response.json(
         { error: "SPOONACULAR_API_KEY ist nicht als Secret gesetzt." },
@@ -60,5 +64,7 @@ export default {
       ingredients,
       source: data.sourceUrl ?? url,
     });
-  }),
+    })(req);
+    return withCorsHeaders(req, res);
+  },
 };

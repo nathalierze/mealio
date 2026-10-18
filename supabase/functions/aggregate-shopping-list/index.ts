@@ -14,6 +14,7 @@
 // Freitext-Rezepte nach und nach, sobald sie Teil einer Einkaufsliste sind.
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
+import { handleCorsPreflight, withCorsHeaders } from "../_shared/cors.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const MODEL = "claude-haiku-4-5-20251001"; // kleines, günstiges Modell reicht für diese Aufgabe
@@ -92,7 +93,10 @@ type Group = {
 };
 
 export default {
-  fetch: withSupabase({ auth: "user" }, async (req, ctx) => {
+  fetch: async (req: Request) => {
+    const preflight = handleCorsPreflight(req);
+    if (preflight) return preflight;
+    const res = await withSupabase({ auth: "user", cors: "disabled" }, async (req, ctx) => {
     if (!ANTHROPIC_API_KEY) {
       return Response.json(
         { error: "ANTHROPIC_API_KEY ist nicht als Secret gesetzt." },
@@ -246,5 +250,7 @@ export default {
     }
 
     return Response.json({ mainItems, baseItems });
-  }),
+    })(req);
+    return withCorsHeaders(req, res);
+  },
 };

@@ -177,7 +177,7 @@ Schema-Ergänzungen (geplant): `households.base_ingredients` (text[], ersetzt di
 - `app/.node-version` pinnt die Node-Version für den Cloudflare-Build.
 - `wrangler` ist als feste Version in `app/package.json` (devDependencies) eingetragen, damit der Cloudflare-Build eine definierte Version nutzt. Lokaler Test: `npx expo export --platform web && npx wrangler dev`.
 - Free-Tier-Limit: 3.000 Build-Minuten/Monat.
-- Edge Functions setzen aktuell **keine** Origin-Beschränkung per CORS (keine `Access-Control-Allow-Origin`-Logik in `supabase/functions/*`) – die neue Cloudflare-URL brauchte deshalb keine Ergänzung irgendwo, es gibt keine Allowlist.
+- **Edge Functions haben jetzt eine CORS-Origin-Allowlist** (`supabase/functions/_shared/cors.ts`, aktuell Cloudflare-URL + Netlify-URL). `withSupabase()`s eigenes CORS-Handling ist statisch (einmal beim Cold-Start konfiguriert) und kann nicht pro Anfrage zwischen mehreren Origins unterscheiden – jede Function deaktiviert es deshalb (`cors: "disabled"`) und wickelt ihren Handler in einen eigenen `fetch`, der den `Origin`-Header der jeweiligen Anfrage auswertet (`handleCorsPreflight`/`withCorsHeaders`) und nur spiegelt, wenn er in der Liste steht. **Einschränkung:** Requests ganz ohne `apikey`-Header werden bereits vom Supabase-Gateway abgefangen, bevor der Function-Code läuft, und bekommen dabei die permissive Standard-CORS-Antwort (`*`) des Gateways – betrifft nur komplett unauthentifizierte Anfragen ohne jede Funktionalität, nicht den eigentlichen Business-Logic-Pfad (verifiziert per `curl` gegen die echte Deployment).
 
 ## Bestehende Prototyp-Funktionen (müssen in der neuen Architektur erhalten bleiben)
 
