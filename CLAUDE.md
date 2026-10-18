@@ -4,7 +4,7 @@
 
 - **Dieses Repo ist öffentlich.** Jeder Commit ist für alle sichtbar, auch rückwirkend in der History – ein späteres "Löschen" einer Datei entfernt sie nicht aus vergangenen Commits.
 - **Niemals committen:** `.env`-Dateien, API-Keys, der `service_role`-Key, App-Passwörter, Todoist-Tokens, echte E-Mail-Adressen, Einladungscodes oder andere personenbezogene Daten.
-- **Secrets gehören ausschließlich** in Supabase Secrets (Edge Functions) oder Netlify-Umgebungsvariablen – nie in Code oder Migrationen.
+- **Secrets gehören ausschließlich** in Supabase Secrets (Edge Functions) oder Cloudflare-Build-Umgebungsvariablen – nie in Code oder Migrationen.
 - **Nur `EXPO_PUBLIC_SUPABASE_URL` und `EXPO_PUBLIC_SUPABASE_ANON_KEY` dürfen im Frontend vorkommen** (bewusst öffentlicher, RLS-geschützter Anon-Key – alles andere bleibt serverseitig in Edge Functions).
 - **Vor jedem Commit prüfen**, ob neue Dateien sensible Inhalte enthalten. Im Zweifel nachfragen, nicht raten.
 - **GitHub Push Protection ist aktiv.** Wird ein Push blockiert, niemals umgehen (kein `--no-verify`, kein Force-Push zum Durchdrücken) – stattdessen das Secret aus der Datei entfernen und die Nutzerin informieren.
@@ -83,7 +83,7 @@ Externe APIs (NUR von Edge Functions aufgerufen, nie direkt vom Client)
 | Backend | **Supabase** (bleibt bestehen) | Relationales Datenmodell passt zu Postgres; gut für KI-gestützte Entwicklung dokumentiert; vorhersehbare Preise gegenüber Firebase |
 | n8n-Ersatz | **Supabase Edge Functions** | n8n/Railway komplett abgelöst, keine zusätzliche Hosting-Infrastruktur |
 | Auth | **Supabase Auth** (E-Mail/Magic Link) | Ersetzt aktuelles shared Password, macht Multi-User möglich |
-| Build/Deploy (jetzt) | **`expo export --platform web` → Netlify** | Schnellster Weg zu einer nutzbaren Homescreen-App für 2 Personen, kein Store-Prozess nötig |
+| Build/Deploy (jetzt) | **`expo export --platform web` → Cloudflare Workers (Static Assets)** | Netlify-Free-Kontingent (≈20 Deploys/Monat) war aufgebraucht; Cloudflare bietet 3.000 Build-Minuten/Monat im Free-Tier |
 | Build/Deploy (später, bei Store-Release) | **Expo + EAS** | EAS Build/Submit für App Store & Play Store, EAS Update für OTA-Updates – noch nicht aktiv |
 
 ## Haushalt-Konzept & Datenmodell-Entscheidungen
@@ -166,7 +166,18 @@ Schema-Ergänzungen (geplant): `households.base_ingredients` (text[], ersetzt di
 - n8n selbst → Logik wandert in Code
 - Shared Password → ersetzt durch Supabase Auth
 
-**Netlify bleibt aktiv** (anders als zuvor hier vermerkt) – hostet jetzt den `expo export --platform web`-Build der neuen App, nicht mehr den alten HTML-Prototyp.
+**Netlify ist abgelöst, wird entfernt** – Hosting der Web-App läuft jetzt über Cloudflare Workers (Static Assets), siehe Abschnitt "Hosting" unten. `netlify.toml` bleibt vorerst als Rückfallebene im Repo, bis der Umzug sich bewährt hat.
+
+## Hosting (Cloudflare Workers, Static Assets)
+
+- **Deploy bei jedem Push auf `main`**, automatisch über Cloudflare (analog zum früheren Netlify-Setup). Konfiguration in `app/wrangler.jsonc` (`assets.directory: "./dist"`, `not_found_handling: "single-page-application"` – übernimmt die Rolle des alten Netlify-SPA-Redirects). Kein `main`-Feld in `wrangler.jsonc`: reine statische Seite, kein Worker-Skript.
+- Build-Command bleibt `npx expo export --platform web` (Working Directory `app/`), Output-Verzeichnis `dist/`.
+- **`EXPO_PUBLIC_*`-Variablen sind in Cloudflare BUILD-Variablen, keine Runtime-Variablen** – sie werden beim Export in den statischen JS-Bundle eingebacken, nicht zur Laufzeit vom Server gelesen. Müssen in den Cloudflare-Projekteinstellungen als Build-Umgebungsvariablen gesetzt sein (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`).
+- Cache-Control-Header (vorher in `netlify.toml`) jetzt in `app/public/_headers` (Cloudflare-Format, landet beim Export automatisch in `dist/`): `index.html`/`manifest.json` ohne Cache, gehashte `_expo/static/*`-Bundles langfristig/immutable gecacht.
+- `app/.node-version` pinnt die Node-Version für den Cloudflare-Build.
+- `wrangler` ist als feste Version in `app/package.json` (devDependencies) eingetragen, damit der Cloudflare-Build eine definierte Version nutzt. Lokaler Test: `npx expo export --platform web && npx wrangler dev`.
+- Free-Tier-Limit: 3.000 Build-Minuten/Monat.
+- Edge Functions setzen aktuell **keine** Origin-Beschränkung per CORS (keine `Access-Control-Allow-Origin`-Logik in `supabase/functions/*`) – die neue Cloudflare-URL brauchte deshalb keine Ergänzung irgendwo, es gibt keine Allowlist.
 
 ## Bestehende Prototyp-Funktionen (müssen in der neuen Architektur erhalten bleiben)
 
@@ -181,11 +192,11 @@ Schema-Ergänzungen (geplant): `households.base_ingredients` (text[], ersetzt di
 
 - MacBook Air 13 (Apple Silicon), macOS Tahoe
 - Node.js, Git, VS Code mit Claude Code Extension
-- GitHub-Repo: `github.com/nathalierze/mealio` (öffentlich, HTTPS-Auth über `gh`), Branch `main` ist zugleich der Netlify-Production-Branch
+- GitHub-Repo: `github.com/nathalierze/mealio` (öffentlich, HTTPS-Auth über `gh`), Branch `main` ist zugleich der Cloudflare-Production-Branch (Netlify vorerst als Rückfallebene parallel aktiv)
 
 ## Aktuelle Kosten-Leitplanken
 
-Privater Gebrauch (2 Personen), laufende Kosten sollen minimal bleiben – aktuell nur Free-Tier-Dienste (Supabase, Netlify, Spoonacular/Claude/Todoist im Rahmen der üblichen Nutzung). Apple Developer Account (99 $/Jahr) und Google Play Console (25 $ einmalig) sind **zurückgestellt**, erst relevant beim späteren Store-Release.
+Privater Gebrauch (2 Personen), laufende Kosten sollen minimal bleiben – aktuell nur Free-Tier-Dienste (Supabase, Cloudflare Workers [3.000 Build-Minuten/Monat], Spoonacular/Claude/Todoist im Rahmen der üblichen Nutzung). Netlify lief vorher ebenfalls im Free-Tier, war aber auf ≈20 Deploys/Monat begrenzt und aufgebraucht – daher der Umzug. Apple Developer Account (99 $/Jahr) und Google Play Console (25 $ einmalig) sind **zurückgestellt**, erst relevant beim späteren Store-Release.
 
 ## Sicherheitsregeln für Datenbank-Änderungen
 
