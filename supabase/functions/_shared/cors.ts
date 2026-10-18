@@ -6,7 +6,7 @@
 // die den Origin-Header der jeweiligen Anfrage auswerten und nur spiegeln,
 // wenn er in dieser Liste steht.
 export const ALLOWED_ORIGINS = [
-  "https://mealio.nathalie-sellmeijer.workers.dev",
+  "https://mealio.mealio-deutschland.workers.dev",
   "https://mealiodeutschland.netlify.app",
 ];
 
