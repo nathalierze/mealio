@@ -26,7 +26,7 @@ export default {
   fetch: async (req: Request) => {
     const preflight = handleCorsPreflight(req);
     if (preflight) return preflight;
-    const res = await withSupabase({ auth: ["publishable", "secret"], cors: "disabled" }, async (req) => {
+    const res = await withSupabase({ auth: "user", cors: "disabled" }, async (req) => {
     if (!SPOONACULAR_API_KEY) {
       return Response.json(
         { error: "SPOONACULAR_API_KEY ist nicht als Secret gesetzt." },
