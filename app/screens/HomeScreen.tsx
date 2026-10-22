@@ -149,6 +149,7 @@ export default function HomeScreen({
         )}
         {activeView === 'plan' && (
           <WeeklyPlanScreen
+            householdId={household.id}
             entries={activeEntries}
             pendingShoppingCount={pendingShoppingEntries.length}
             loading={planLoading}
@@ -157,6 +158,7 @@ export default function HomeScreen({
             onViewShoppingList={() => setActiveView('shopping')}
             onSetPlannedFor={setPlannedFor}
             onRemoveFromPlan={removeFromPlan}
+            onAddRecipeWithDay={togglePlan}
           />
         )}
         {activeView === 'shopping' && (

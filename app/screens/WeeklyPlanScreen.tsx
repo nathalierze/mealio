@@ -5,6 +5,7 @@ import PlanRecipeCard from '../components/PlanRecipeCard';
 import Card from '../components/Card';
 import DayPickerSheet from '../components/DayPickerSheet';
 import WeekView from '../components/WeekView';
+import FreeDaySheet from '../components/FreeDaySheet';
 import { colors, fonts, fontSizes, radii, spacing } from '../lib/theme';
 import { isMissed } from '../lib/planDays';
 import { getWeeklyPlanViewMode, setWeeklyPlanViewMode, type WeeklyPlanViewMode } from '../lib/deviceSettings';
@@ -28,6 +29,7 @@ function sortEntries(entries: WeeklyPlanEntry[]): WeeklyPlanEntry[] {
 }
 
 export default function WeeklyPlanScreen({
+  householdId,
   entries,
   pendingShoppingCount,
   loading,
@@ -36,7 +38,9 @@ export default function WeeklyPlanScreen({
   onViewShoppingList,
   onSetPlannedFor,
   onRemoveFromPlan,
+  onAddRecipeWithDay,
 }: {
+  householdId: string;
   entries: WeeklyPlanEntry[];
   pendingShoppingCount: number;
   loading: boolean;
@@ -45,9 +49,11 @@ export default function WeeklyPlanScreen({
   onViewShoppingList: () => void;
   onSetPlannedFor: (entryId: string, plannedFor: string | null) => void;
   onRemoveFromPlan: (entryId: string) => void;
+  onAddRecipeWithDay: (recipe: Recipe, day: string) => void;
 }) {
   const [viewMode, setViewMode] = useState<WeeklyPlanViewMode>('list');
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [freeDayGroup, setFreeDayGroup] = useState<string[] | null>(null);
   const sorted = useMemo(() => sortEntries(entries), [entries]);
   const editingEntry = entries.find((e) => e.id === editingEntryId) ?? null;
 
@@ -70,10 +76,12 @@ export default function WeeklyPlanScreen({
     return counts;
   }, [entries, editingEntryId]);
 
-  const noDayCount = useMemo(
-    () => entries.filter((e) => !e.plannedFor || isMissed(e.plannedFor, e.cookedAt)).length,
+  const noDayEntries = useMemo(
+    () => entries.filter((e) => !e.plannedFor || isMissed(e.plannedFor, e.cookedAt)),
     [entries]
   );
+  const noDayCount = noDayEntries.length;
+  const activeRecipeIds = useMemo(() => new Set(entries.map((e) => e.recipe.id)), [entries]);
 
   if (loading) {
     return (
@@ -168,9 +176,7 @@ export default function WeeklyPlanScreen({
           onCooked={onCooked}
           onViewShoppingList={onViewShoppingList}
           onPressDay={setEditingEntryId}
-          onOpenFreeDaySheet={() => {
-            /* Schritt 5 */
-          }}
+          onOpenFreeDaySheet={setFreeDayGroup}
         />
       )}
 
@@ -190,6 +196,19 @@ export default function WeeklyPlanScreen({
           setEditingEntryId(null);
         }}
       />
+
+      {freeDayGroup && (
+        <FreeDaySheet
+          visible
+          onClose={() => setFreeDayGroup(null)}
+          days={freeDayGroup}
+          householdId={householdId}
+          noDayEntries={noDayEntries}
+          excludeRecipeIds={activeRecipeIds}
+          onAssignExisting={onSetPlannedFor}
+          onAddNew={onAddRecipeWithDay}
+        />
+      )}
     </View>
   );
 }
