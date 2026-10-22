@@ -1,8 +1,8 @@
-import { useRef } from 'react';
 import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/build/Feather';
 import Card from './Card';
 import DayChip from './DayChip';
+import { usePlanCookAnimation } from '../hooks/usePlanCookAnimation';
 import { colors, fonts, fontSizes, placeholderColors, spacing } from '../lib/theme';
 import type { Recipe } from '../screens/RecipeListScreen';
 
@@ -25,27 +25,11 @@ export default function PlanRecipeCard({
   onCooked: () => void;
   onPressDay: () => void;
 }) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const stampOpacity = useRef(new Animated.Value(0)).current;
-  const cardOpacity = useRef(new Animated.Value(1)).current;
+  const { scale, stampOpacity, cardOpacity, handleCook } = usePlanCookAnimation(onCooked);
 
   const metaParts = [recipe.time ? `${recipe.time} Min` : null, recipe.portions ? `${recipe.portions} Portionen` : null].filter(
     Boolean
   );
-
-  function handleCook() {
-    Animated.sequence([
-      Animated.parallel([
-        Animated.spring(scale, { toValue: 1.02, friction: 4, useNativeDriver: true }),
-        Animated.timing(stampOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-      ]),
-      Animated.delay(550),
-      Animated.parallel([
-        Animated.timing(cardOpacity, { toValue: 0, duration: 280, useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 0.95, duration: 280, useNativeDriver: true }),
-      ]),
-    ]).start(() => onCooked());
-  }
 
   return (
     <Animated.View style={{ opacity: cardOpacity, transform: [{ scale }] }}>

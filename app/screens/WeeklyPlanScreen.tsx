@@ -1,10 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import Feather from '@expo/vector-icons/build/Feather';
 import PlanRecipeCard from '../components/PlanRecipeCard';
 import Card from '../components/Card';
 import DayPickerSheet from '../components/DayPickerSheet';
+import WeekView from '../components/WeekView';
 import { colors, fonts, fontSizes, radii, spacing } from '../lib/theme';
 import { isMissed } from '../lib/planDays';
+import { getWeeklyPlanViewMode, setWeeklyPlanViewMode, type WeeklyPlanViewMode } from '../lib/deviceSettings';
 import type { Recipe } from './RecipeListScreen';
 import type { WeeklyPlanEntry } from '../hooks/useWeeklyPlan';
 
@@ -43,9 +46,19 @@ export default function WeeklyPlanScreen({
   onSetPlannedFor: (entryId: string, plannedFor: string | null) => void;
   onRemoveFromPlan: (entryId: string) => void;
 }) {
+  const [viewMode, setViewMode] = useState<WeeklyPlanViewMode>('list');
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const sorted = useMemo(() => sortEntries(entries), [entries]);
   const editingEntry = entries.find((e) => e.id === editingEntryId) ?? null;
+
+  useEffect(() => {
+    getWeeklyPlanViewMode().then(setViewMode);
+  }, []);
+
+  function changeViewMode(mode: WeeklyPlanViewMode) {
+    setViewMode(mode);
+    setWeeklyPlanViewMode(mode);
+  }
 
   const dayCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -56,6 +69,11 @@ export default function WeeklyPlanScreen({
     }
     return counts;
   }, [entries, editingEntryId]);
+
+  const noDayCount = useMemo(
+    () => entries.filter((e) => !e.plannedFor || isMissed(e.plannedFor, e.cookedAt)).length,
+    [entries]
+  );
 
   if (loading) {
     return (
@@ -79,41 +97,82 @@ export default function WeeklyPlanScreen({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Diese Woche</Text>
-      <Text style={styles.subtitle}>
-        {entries.length} Gericht{entries.length !== 1 ? 'e' : ''} geplant
-      </Text>
-      <FlatList
-        data={sorted}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <PlanRecipeCard
-            recipe={item.recipe}
-            plannedFor={item.plannedFor}
-            cookedAt={item.cookedAt}
-            onPress={() => onSelectRecipe(item.recipe)}
-            onCooked={() => onCooked(item.id)}
-            onPressDay={() => setEditingEntryId(item.id)}
-          />
-        )}
-        ListFooterComponent={
-          pendingShoppingCount > 0 ? (
-            <Card style={styles.hintCard}>
-              <View style={styles.hintText}>
-                <Text style={styles.hintTitle}>Einkaufsliste ist bereit</Text>
-                <Text style={styles.hintBody}>
-                  {pendingShoppingCount} Rezept{pendingShoppingCount !== 1 ? 'e' : ''} bereit für
-                  die Einkaufsliste
-                </Text>
-              </View>
-              <Pressable style={styles.hintButton} onPress={onViewShoppingList}>
-                <Text style={styles.hintButtonText}>Ansehen</Text>
-              </Pressable>
-            </Card>
-          ) : null
-        }
-      />
+      <View style={styles.header}>
+        <View style={styles.headerText}>
+          <Text style={styles.title}>{viewMode === 'list' ? 'Diese Woche' : 'Nächste 7 Tage'}</Text>
+          <Text style={styles.subtitle}>
+            {viewMode === 'list'
+              ? `${entries.length} Gericht${entries.length !== 1 ? 'e' : ''} geplant`
+              : `${entries.length} Gericht${entries.length !== 1 ? 'e' : ''} · ${noDayCount} noch ohne Tag`}
+          </Text>
+        </View>
+        <View style={styles.viewToggle}>
+          <Pressable
+            style={[styles.toggleButton, viewMode === 'list' && styles.toggleButtonActive]}
+            onPress={() => changeViewMode('list')}
+            accessibilityLabel="Als Liste anzeigen"
+          >
+            <Feather name="list" size={18} color={viewMode === 'list' ? colors.onPrimary : colors.primary} />
+          </Pressable>
+          <Pressable
+            style={[styles.toggleButton, viewMode === 'week' && styles.toggleButtonActive]}
+            onPress={() => changeViewMode('week')}
+            accessibilityLabel="Nach Tagen anzeigen"
+          >
+            <Feather
+              name="calendar"
+              size={18}
+              color={viewMode === 'week' ? colors.onPrimary : colors.primary}
+            />
+          </Pressable>
+        </View>
+      </View>
+
+      {viewMode === 'list' ? (
+        <FlatList
+          data={sorted}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          renderItem={({ item }) => (
+            <PlanRecipeCard
+              recipe={item.recipe}
+              plannedFor={item.plannedFor}
+              cookedAt={item.cookedAt}
+              onPress={() => onSelectRecipe(item.recipe)}
+              onCooked={() => onCooked(item.id)}
+              onPressDay={() => setEditingEntryId(item.id)}
+            />
+          )}
+          ListFooterComponent={
+            pendingShoppingCount > 0 ? (
+              <Card style={styles.hintCard}>
+                <View style={styles.hintText}>
+                  <Text style={styles.hintTitle}>Einkaufsliste ist bereit</Text>
+                  <Text style={styles.hintBody}>
+                    {pendingShoppingCount} Rezept{pendingShoppingCount !== 1 ? 'e' : ''} bereit
+                    für die Einkaufsliste
+                  </Text>
+                </View>
+                <Pressable style={styles.hintButton} onPress={onViewShoppingList}>
+                  <Text style={styles.hintButtonText}>Ansehen</Text>
+                </Pressable>
+              </Card>
+            ) : null
+          }
+        />
+      ) : (
+        <WeekView
+          entries={entries}
+          pendingShoppingCount={pendingShoppingCount}
+          onSelectRecipe={onSelectRecipe}
+          onCooked={onCooked}
+          onViewShoppingList={onViewShoppingList}
+          onPressDay={setEditingEntryId}
+          onOpenFreeDaySheet={() => {
+            /* Schritt 5 */
+          }}
+        />
+      )}
 
       <DayPickerSheet
         visible={editingEntry !== null}
@@ -139,19 +198,43 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.screenPadding,
+    marginBottom: spacing.lg,
+  },
+  headerText: {
+    flex: 1,
+  },
   title: {
     fontFamily: fonts.headingSemiBold,
     fontSize: fontSizes.screenTitle,
     color: colors.primary,
-    paddingHorizontal: spacing.screenPadding,
   },
   subtitle: {
     fontFamily: fonts.body,
     fontSize: fontSizes.bodySmall,
     color: colors.textMuted,
-    paddingHorizontal: spacing.screenPadding,
     marginTop: spacing.xs,
-    marginBottom: spacing.lg,
+  },
+  viewToggle: {
+    flexDirection: 'row',
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radii.segmentedOuter,
+    padding: 4,
+    gap: 2,
+  },
+  toggleButton: {
+    width: 44,
+    height: 38,
+    borderRadius: radii.segmentedInner,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggleButtonActive: {
+    backgroundColor: colors.primary,
   },
   list: {
     paddingHorizontal: spacing.screenPadding,
