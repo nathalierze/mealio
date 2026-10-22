@@ -74,6 +74,32 @@ Fest unten, Hintergrund `background`, Trennlinie oben `borderSoft`, Innenabstand
 - Darunter Hinweis-Karte in `accent`, Radius 18: „Einkaufsliste ist bereit“ + „14 Zutaten aus 3 Rezepten“, rechts Button „Ansehen“ (`primary`) → wechselt zur Liste.
 - Leerer Zustand bleibt wie bisher, nur im neuen Stil.
 
+## Wochenplan nach Tagen
+
+Rezepte im Wochenplan können optional einem Tag zugeordnet werden (rollierend, nächste 7 Tage ab heute, kein Kalenderwochen-Bezug). Wer keine Tage vergibt, nutzt die App wie bisher.
+
+Neue Farbwerte: `dayChip` (`#E3EDE6`, Chip-Hintergrund für einen späteren Tag), `missed` (`#8A6240`, warmes Braun für "verpasst"-Hinweise), `surfaceSunken` (`#F3ECDC`, abgesetzte Fläche für "Noch ohne Tag").
+
+**Ansichts-Umschalter** (Wochenplan-Header, rechts neben der Überschrift): Icon-Segment wie Segmented Control (`surfaceMuted`-Hintergrund, aktive Seite `primary` gefüllt mit hellem Icon), Icons `list`/`calendar` (Feather), je mind. 44×38 px. Standard "Liste", Wahl wird geräteweit gemerkt (`lib/deviceSettings.ts`).
+
+**Tag-Chip** (in der Listen-Karte, unter Name/Meta): Höhe 28, voll gerundet, Kalender-Icon 13 px + Text 13/700.
+- Heute: `accent`-Hintergrund, Text "Heute".
+- Späterer Tag: `dayChip`-Hintergrund, Text z.B. "Fr 23.10.".
+- Ohne Tag / verpasst: gestrichelter Rand (`dashed`), Text "Tag wählen".
+- Tipp öffnet das Sheet "Tag wählen". Sortierung der Liste: nach Datum, ohne Tag am Ende.
+
+**Ansicht "Woche":** Überschrift "Nächste 7 Tage", Untertitel "X Gerichte · Y noch ohne Tag".
+- Block "Noch ohne Tag" oben (nur wenn nicht leer): `surfaceSunken`-Fläche, Radius 20, Überschrift Fraunces 19 + Anzahl. Kompakte Karten (Bild 52px), rechts gestrichelter "Tag wählen"-Chip + Gekocht-Button. Verpasste Einträge zeigen statt Meta "War für … geplant" in `missed`.
+- Tage mit Rezepten: Kopfzeile Wochentag (Fraunces 19) + Datum (gedämpft), heute zusätzlich `accent`-Pill "Heute". Kompakte Karten, rundem Outline-"Tag ändern"-Button (Kalender-Icon) + Gekocht-Button.
+- Leere Tage: aufeinanderfolgende leere Tage zu einer gestrichelten Zeile zusammengefasst ("So 25. – Mi 28.", darunter "Nichts geplant"), einzelner leerer Tag eigene Zeile. Rechts `dayChip`-Pill "+ Rezept", ganze Zeile antippbar → Sheet "Rezept für freie Tage".
+- Banner "Einkaufsliste ist bereit" und Bottom-Bar wie bisher (ignoriert Tage komplett).
+
+**Sheet "Tag wählen"** (von Tag-Chip, "Tag ändern" und "Zum Wochenplan"/"Im Wochenplan" auf der Detailseite): Titel "Wann gibt's das?" (Fraunces 26) + Rezeptname. Raster 4×2 (Kacheln 78px hoch, Radius 16): Heute/Morgen + 5 weitere Tage + "Ohne Tag". Aktuelle Auswahl `primary` gefüllt, sonst weiß mit Rand. Kleine Punkte (6px, `accent`) zeigen die Anzahl anderer Gerichte an dem Tag. Tipp speichert sofort (kein Speichern-Button). Unten roter Text-Button "Aus dem Wochenplan entfernen" (nur wenn das Rezept schon im Plan ist).
+
+**Sheet "Rezept für freie Tage"** (von einer leeren Zeile): bei zusammengefassten Tagen oben eine Reihe Tag-Kacheln (56px), erste vorausgewählt, Titel passt sich an ("Was gibt's am Sonntag?"). Liste "Aus 'Noch ohne Tag'" mit den Rezepten ohne Tag; Tipp ordnet zu und schließt. Darunter Outline-Button "Aus allen Rezepten wählen" (Lupen-Icon) für eine durchsuchbare Liste aller noch nicht geplanten Rezepte.
+
+Plattform: Sheets funktionieren im Web und in Expo Go (gemeinsame `BottomSheet`-Komponente), kein Drag & Drop.
+
 ## Screen: Einkaufsliste
 
 - Titel „Einkaufsliste“, rechts daneben „Entwurf · 8 Zutaten“ (14, `textMuted`).

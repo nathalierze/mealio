@@ -19,6 +19,9 @@ export const colors = {
   success: '#D5E4C8',
   danger: '#B4432A',
   onPrimary: '#FFF8EC',
+  dayChip: '#E3EDE6',
+  missed: '#8A6240',
+  surfaceSunken: '#F3ECDC',
 } as const;
 
 // Platzhalterfarben für Rezeptkacheln ohne Foto (reihum verwendet).

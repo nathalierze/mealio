@@ -38,9 +38,21 @@ export default function HomeScreen({
     pendingShoppingEntries,
     loading: planLoading,
     togglePlan,
+    setPlannedFor,
+    removeFromPlan,
     markCooked,
     markShoppingSent,
   } = useWeeklyPlan(household.id);
+
+  const selectedPlanEntry = selectedRecipe
+    ? activeEntries.find((e) => e.recipe.id === selectedRecipe.id) ?? null
+    : null;
+  const detailDayCounts: Record<string, number> = {};
+  for (const entry of activeEntries) {
+    if (entry.id === selectedPlanEntry?.id) continue;
+    if (!entry.plannedFor) continue;
+    detailDayCounts[entry.plannedFor] = (detailDayCounts[entry.plannedFor] ?? 0) + 1;
+  }
 
   if (editingRecipe) {
     return (
@@ -62,8 +74,15 @@ export default function HomeScreen({
       <RecipeDetailScreen
         recipe={selectedRecipe}
         baseIngredients={household.base_ingredients}
-        inPlan={planRecipeIds.has(selectedRecipe.id)}
-        onTogglePlan={() => togglePlan(selectedRecipe)}
+        planEntry={selectedPlanEntry}
+        dayCounts={detailDayCounts}
+        onSelectDay={(day) => {
+          if (selectedPlanEntry) setPlannedFor(selectedPlanEntry.id, day);
+          else togglePlan(selectedRecipe, day);
+        }}
+        onRemoveFromPlan={() => {
+          if (selectedPlanEntry) removeFromPlan(selectedPlanEntry.id);
+        }}
         onBack={() => setSelectedRecipe(null)}
         onEdit={setEditingRecipe}
         onDeleted={() => {
@@ -136,6 +155,8 @@ export default function HomeScreen({
             onSelectRecipe={setSelectedRecipe}
             onCooked={markCooked}
             onViewShoppingList={() => setActiveView('shopping')}
+            onSetPlannedFor={setPlannedFor}
+            onRemoveFromPlan={removeFromPlan}
           />
         )}
         {activeView === 'shopping' && (

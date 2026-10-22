@@ -7,8 +7,10 @@ import { confirm, notify } from '../lib/alert';
 import { isBaseIngredient } from '../lib/baseIngredients';
 import Card from '../components/Card';
 import ActionSheet from '../components/ActionSheet';
+import DayPickerSheet from '../components/DayPickerSheet';
 import { colors, fonts, fontSizes, placeholderColors, spacing } from '../lib/theme';
 import type { Recipe } from './RecipeListScreen';
+import type { WeeklyPlanEntry } from '../hooks/useWeeklyPlan';
 
 function placeholderColorFor(recipeId: number): string {
   return placeholderColors[recipeId % placeholderColors.length];
@@ -17,16 +19,20 @@ function placeholderColorFor(recipeId: number): string {
 export default function RecipeDetailScreen({
   recipe,
   baseIngredients,
-  inPlan,
-  onTogglePlan,
+  planEntry,
+  dayCounts,
+  onSelectDay,
+  onRemoveFromPlan,
   onBack,
   onEdit,
   onDeleted,
 }: {
   recipe: Recipe;
   baseIngredients: string[];
-  inPlan: boolean;
-  onTogglePlan: () => void;
+  planEntry: WeeklyPlanEntry | null;
+  dayCounts: Record<string, number>;
+  onSelectDay: (day: string | null) => void;
+  onRemoveFromPlan: () => void;
   onBack: () => void;
   onEdit: (recipe: Recipe) => void;
   onDeleted: () => void;
@@ -34,7 +40,9 @@ export default function RecipeDetailScreen({
   const insets = useSafeAreaInsets();
   const [deleting, setDeleting] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const [showDayPicker, setShowDayPicker] = useState(false);
   const [displayPortions, setDisplayPortions] = useState(recipe.portions ?? 4);
+  const inPlan = planEntry !== null;
 
   async function confirmDelete() {
     const confirmed = await confirm(
@@ -161,7 +169,7 @@ export default function RecipeDetailScreen({
       <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
         <Pressable
           style={[styles.planButton, inPlan ? styles.planButtonOutline : styles.planButtonFilled]}
-          onPress={onTogglePlan}
+          onPress={() => setShowDayPicker(true)}
         >
           <Feather
             name={inPlan ? 'check' : 'plus'}
@@ -192,6 +200,23 @@ export default function RecipeDetailScreen({
             onPress: confirmDelete,
           },
         ]}
+      />
+
+      <DayPickerSheet
+        visible={showDayPicker}
+        onClose={() => setShowDayPicker(false)}
+        recipeName={recipe.name}
+        selectedDay={planEntry?.plannedFor ?? null}
+        isInPlan={inPlan}
+        dayCounts={dayCounts}
+        onSelectDay={(day) => {
+          onSelectDay(day);
+          setShowDayPicker(false);
+        }}
+        onRemove={() => {
+          onRemoveFromPlan();
+          setShowDayPicker(false);
+        }}
       />
     </View>
   );

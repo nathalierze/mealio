@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Feather from '@expo/vector-icons/build/Feather';
 import Card from './Card';
+import DayChip from './DayChip';
 import { colors, fonts, fontSizes, placeholderColors, spacing } from '../lib/theme';
 import type { Recipe } from '../screens/RecipeListScreen';
 
@@ -11,12 +12,18 @@ function placeholderColorFor(recipeId: number): string {
 
 export default function PlanRecipeCard({
   recipe,
+  plannedFor,
+  cookedAt,
   onPress,
   onCooked,
+  onPressDay,
 }: {
   recipe: Recipe;
+  plannedFor: string | null;
+  cookedAt: string | null;
   onPress: () => void;
   onCooked: () => void;
+  onPressDay: () => void;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
   const stampOpacity = useRef(new Animated.Value(0)).current;
@@ -56,6 +63,7 @@ export default function PlanRecipeCard({
               {recipe.name}
             </Text>
             {metaParts.length > 0 && <Text style={styles.meta}>{metaParts.join(' · ')}</Text>}
+            <DayChip plannedFor={plannedFor} cookedAt={cookedAt} onPress={onPressDay} />
           </View>
           <Pressable style={styles.cookButton} onPress={handleCook} hitSlop={8}>
             <Feather name="check" size={20} color={colors.primary} strokeWidth={2.4} />
