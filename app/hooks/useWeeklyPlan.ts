@@ -8,6 +8,7 @@ export type WeeklyPlanEntry = {
   recipe: Recipe;
   cookedAt: string | null;
   shoppingListSentAt: string | null;
+  plannedFor: string | null;
 };
 
 type RecipeRow = {
@@ -26,6 +27,7 @@ type WeeklyPlanRow = {
   recipe_id: number;
   cooked_at: string | null;
   shopping_list_sent_at: string | null;
+  planned_for: string | null;
   recipes: RecipeRow | null;
 };
 
@@ -52,13 +54,17 @@ export function useWeeklyPlan(householdId: string) {
 
   const load = useCallback(async () => {
     setLoading(true);
+    // Nicht nach week_identifier gefiltert: ein Eintrag bleibt relevant, bis
+    // er abgeschlossen ist (gekocht UND an die Einkaufsliste gesendet) -
+    // rollierendes Fenster statt Kalenderwoche, verpasste Tage bleiben
+    // stehen, bis jemand sie neu zuordnet (siehe CLAUDE.md).
     const { data, error } = await supabase
       .from('weekly_plan')
       .select(
-        'id, recipe_id, cooked_at, shopping_list_sent_at, recipes(id, name, image, time, portions, ingredients, source, recipe_tags(tags(name)))'
+        'id, recipe_id, cooked_at, shopping_list_sent_at, planned_for, recipes(id, name, image, time, portions, ingredients, source, recipe_tags(tags(name)))'
       )
       .eq('household_id', householdId)
-      .eq('week_identifier', weekId);
+      .or('cooked_at.is.null,shopping_list_sent_at.is.null');
 
     if (!error && data) {
       const rows = data as unknown as WeeklyPlanRow[];
@@ -69,11 +75,12 @@ export function useWeeklyPlan(householdId: string) {
           recipe: mapRecipeRow(row.recipes as RecipeRow),
           cookedAt: row.cooked_at,
           shoppingListSentAt: row.shopping_list_sent_at,
+          plannedFor: row.planned_for,
         }));
       setEntries(mapped);
     }
     setLoading(false);
-  }, [householdId, weekId]);
+  }, [householdId]);
 
   useEffect(() => {
     load();
@@ -90,7 +97,11 @@ export function useWeeklyPlan(householdId: string) {
     activeEntries,
   ]);
 
-  async function togglePlan(recipe: Recipe) {
+  // plannedFor: nur für den Fall relevant, dass das Rezept neu in den Plan
+  // kommt (Insert oder Reaktivierung) - der einfache Plus-Button auf der
+  // Rezeptkachel lässt das weg (= "ohne Tag", wie bisher), die Detailseite
+  // kann einen bereits im Tag-wählen-Sheet ausgewählten Tag mitgeben.
+  async function togglePlan(recipe: Recipe, plannedFor: string | null = null) {
     const activeEntry = activeEntries.find((e) => e.recipe.id === recipe.id);
     const existingEntry = entries.find((e) => e.recipe.id === recipe.id);
 
@@ -98,21 +109,36 @@ export function useWeeklyPlan(householdId: string) {
       // Aktiv im Plan -> komplett entfernen.
       await supabase.from('weekly_plan').delete().eq('id', activeEntry.id);
     } else if (existingEntry) {
-      // Zeile existiert, ist aber als "gekocht" markiert -> zurück in den
-      // aktiven Plan holen, statt einen doppelten Eintrag anzulegen (unique
-      // constraint household_id/recipe_id/week_identifier). Zählt als neue
-      // Planung: auch den Einkaufslisten-"gesendet"-Status zurücksetzen,
-      // sonst tauchen die Zutaten nicht in der nächsten Liste auf.
+      // Zeile existiert (abgeschlossen) -> zurück in den aktiven Plan holen,
+      // statt einen zweiten Eintrag anzulegen. Zählt als neue Planung: auch
+      // den Einkaufslisten-"gesendet"-Status zurücksetzen, sonst tauchen die
+      // Zutaten nicht in der nächsten Liste auf.
       await supabase
         .from('weekly_plan')
-        .update({ cooked_at: null, shopping_list_sent_at: null })
+        .update({ cooked_at: null, shopping_list_sent_at: null, planned_for: plannedFor })
         .eq('id', existingEntry.id);
     } else {
-      await supabase
-        .from('weekly_plan')
-        .insert({ household_id: householdId, recipe_id: recipe.id, week_identifier: weekId });
+      await supabase.from('weekly_plan').insert({
+        household_id: householdId,
+        recipe_id: recipe.id,
+        week_identifier: weekId,
+        planned_for: plannedFor,
+      });
     }
 
+    await load();
+  }
+
+  // Für das "Tag wählen"-Sheet: Tag eines bereits aktiven Eintrags ändern
+  // oder entfernen (null = "ohne Tag").
+  async function setPlannedFor(entryId: string, plannedFor: string | null) {
+    await supabase.from('weekly_plan').update({ planned_for: plannedFor }).eq('id', entryId);
+    await load();
+  }
+
+  // Für den "Aus dem Wochenplan entfernen"-Button im Tag-wählen-Sheet.
+  async function removeFromPlan(entryId: string) {
+    await supabase.from('weekly_plan').delete().eq('id', entryId);
     await load();
   }
 
@@ -140,6 +166,8 @@ export function useWeeklyPlan(householdId: string) {
     pendingShoppingEntries,
     loading,
     togglePlan,
+    setPlannedFor,
+    removeFromPlan,
     markCooked,
     markShoppingSent,
   };
