@@ -109,6 +109,17 @@ Schema: `households`, `household_members`, `recipes.household_id`, `recipe_ingre
 
 Schema-Ergänzungen (geplant): `weekly_plan.cooked_at` (nullable, "gekocht"-Markierung ohne Datensatzverlust), `weekly_plan.shopping_list_sent_at` (nullable, Ausschluss aus künftigen Listen-Generierungen). Keine separate Snapshot-Tabelle nötig, da der Entwurf live berechnet wird.
 
+### Wochenplan nach Tagen (optional)
+
+- **Tag ist optional, pro Eintrag** (`weekly_plan.planned_for`, `date`, nullable = "ohne Tag"). Wer keine Tage vergibt, nutzt die App unverändert wie bisher. Mehrere Rezepte pro Tag erlaubt, keine Mahlzeiten-Unterscheidung (Mittag/Abend), haushaltsweit (beide Mitglieder sehen dieselbe Zuordnung).
+- **Rollierendes Fenster, kein Kalenderwochen-Bezug:** "die nächsten 7 Tage ab heute", lokales Gerätedatum (`app/lib/planDays.ts`, reine Funktionen). Das hat die Lade-Logik des Wochenplans grundsätzlich verändert: `useWeeklyPlan` filtert nicht mehr nach `week_identifier` (aktuelle Kalenderwoche), sondern lädt alles, was noch nicht abgeschlossen ist (`cooked_at IS NULL OR shopping_list_sent_at IS NULL`) – notwendig, damit verpasste/alte Einträge überhaupt noch sichtbar sind. `week_identifier` bleibt als Spalte bestehen (wird beim Insert weiter befüllt), wird aber nirgends mehr zum Filtern benutzt – reine Altlast.
+- **Verpasste Tage fallen zurück auf "ohne Tag":** Ein Eintrag mit `planned_for` in der Vergangenheit und nicht gekocht wird wie "ohne Tag" behandelt (Chip "Tag wählen" statt Datum), zeigt aber in der Wochenansicht den Hinweis "War für … geplant". Das Datum bleibt in der DB stehen, bis jemand einen neuen Tag wählt oder "Ohne Tag" setzt. Kein Cronjob.
+- **Alter Unique-Constraint entfernt** (`household_id, recipe_id, week_identifier`) – unter dem neuen Modell kann ein Rezept legitim mehrfach in derselben Kalenderwoche eingeplant werden (verschiedene Tage), auch nach einem bereits abgeschlossenen (gekocht + gesendet) Eintrag. Die App-Logik (`togglePlan`/`setPlannedFor`) verhindert weiterhin ungewollte Duplikate eines aktiven Eintrags.
+- **Einkaufsliste ignoriert Tage komplett** – alle nicht gesendeten Plan-Einträge zählen wie bisher, unabhängig von `planned_for`.
+- **Zwei Ansichten** (Liste/Woche), Wahl wird geräteweit gemerkt (`app/lib/deviceSettings.ts`, generische `AsyncStorage`-Abstraktion für rein lokale Einstellungen, nicht haushaltsweit).
+- **Neue wiederverwendbare `components/BottomSheet.tsx`**, extrahiert aus den bisher mehrfach duplizierten Modal-Sheets (Rezept hinzufügen, Haushalt beitreten) – wird von `DayPickerSheet` und `FreeDaySheet` genutzt, die beiden alten Stellen wurden nicht nachträglich umgestellt.
+- **"Aus allen Rezepten wählen"** (Sheet "Rezept für freie Tage") bewusst einfach gehalten: Text-Suche ohne Bilder/Tags-Filter, eigene kleine Abfrage statt Wiederverwendung der vollen Rezeptliste-Logik.
+
 ### Todoist ist optional – die App muss ohne Verbindung voll nutzbar sein
 
 - **Ob ein Haushalt verbunden ist, ergibt sich aus `households.todoist_api_token` (vorhanden/leer)** – keine eigene Flag-Spalte. Eine fehlende Verbindung ist ein normaler Zustand, nirgends ein Fehler oder eine Warnung.
