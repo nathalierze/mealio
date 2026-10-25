@@ -54,17 +54,21 @@ export function useWeeklyPlan(householdId: string) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    // Nicht nach week_identifier gefiltert: ein Eintrag bleibt relevant, bis
-    // er abgeschlossen ist (gekocht UND an die Einkaufsliste gesendet) -
-    // rollierendes Fenster statt Kalenderwoche, verpasste Tage bleiben
-    // stehen, bis jemand sie neu zuordnet (siehe CLAUDE.md).
+    // Nicht nach week_identifier gefiltert (rollierendes Fenster statt
+    // Kalenderwoche, verpasste Tage bleiben stehen, bis jemand sie neu
+    // zuordnet - siehe CLAUDE.md), sondern nach cooked_at: ein gekochtes
+    // Rezept ist abgeschlossen und darf nie wieder in die Einkaufslisten-
+    // Aggregation einfließen, unabhängig vom Sent-Status (Bugfix: vorher
+    // blieben gekocht-aber-nie-gesendete Einträge dauerhaft in
+    // pendingShoppingEntries stehen, da week_identifier das früher implizit
+    // begrenzt hatte).
     const { data, error } = await supabase
       .from('weekly_plan')
       .select(
         'id, recipe_id, cooked_at, shopping_list_sent_at, planned_for, recipes(id, name, image, time, portions, ingredients, source, recipe_tags(tags(name)))'
       )
       .eq('household_id', householdId)
-      .or('cooked_at.is.null,shopping_list_sent_at.is.null');
+      .is('cooked_at', null);
 
     if (!error && data) {
       const rows = data as unknown as WeeklyPlanRow[];
