@@ -157,6 +157,11 @@ const ShoppingListScreen = forwardRef<ShoppingListHandle, Props>(function Shoppi
     ...allMainItems.filter((item) => checkedKeys.has(item.key)),
   ];
   const baseRemaining = base.filter((b) => !movedToMain.has(b.key));
+  // Abgehakt heißt "schon da" - nur offene Einträge werden an Todoist
+  // gesendet. Einzige Stelle, die das entscheidet (Dialog-Text und Payload
+  // nutzen beide diese Liste), die Function selbst kennt den Abhak-Status
+  // nicht.
+  const openItems = mainItems.filter((item) => !checkedKeys.has(item.key));
 
   function moveToMain(key: string) {
     setMovedToMain((prev) => new Set(prev).add(key));
@@ -177,9 +182,24 @@ const ShoppingListScreen = forwardRef<ShoppingListHandle, Props>(function Shoppi
       notify('Kein Todoist-Projekt gewählt', 'Bitte zuerst ein Todoist-Projekt in den Einstellungen wählen.');
       return;
     }
+
+    if (openItems.length === 0) {
+      const confirmed = await confirm(
+        'Alles abgehakt',
+        'Es gibt nichts mehr zu senden. Einkauf trotzdem abschließen?',
+        'Einkauf abschließen'
+      );
+      if (confirmed) completeWithoutTodoist();
+      return;
+    }
+
+    const checkedCount = mainItems.length - openItems.length;
+    const message =
+      'Liste wird an Todoist gesendet und hier geleert.' +
+      (checkedCount > 0 ? ` ${checkedCount} abgehakte werden nicht gesendet.` : '');
     const confirmed = await confirm(
-      'An Todoist senden?',
-      'Liste wird an Todoist gesendet und hier geleert.',
+      `${openItems.length} Eintrag${openItems.length !== 1 ? 'e' : ''} an Todoist senden?`,
+      message,
       'Senden'
     );
     if (confirmed) handleSend();
@@ -198,7 +218,7 @@ const ShoppingListScreen = forwardRef<ShoppingListHandle, Props>(function Shoppi
   async function handleSend() {
     onSendingChange?.(true);
     const { error } = await supabase.functions.invoke('send-to-todoist', {
-      body: { items: mainItems.map((item) => [item.quantity, item.name].filter(Boolean).join(' ')) },
+      body: { items: openItems.map((item) => [item.quantity, item.name].filter(Boolean).join(' ')) },
     });
     if (error) {
       onSendingChange?.(false);
