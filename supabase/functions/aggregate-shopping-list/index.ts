@@ -104,6 +104,11 @@ export default {
       );
     }
 
+    // Nur Messung, kein Verhalten geändert: Zeitstempel pro Schritt, werden
+    // als _timing im Response mitgeschickt (und geloggt) - Grundlage für die
+    // Performance-Analyse, soll wieder entfernt werden, sobald der eigentliche
+    // Fix gemessen ist.
+    const t0 = Date.now();
     const { recipeIds } = await req.json();
     if (!Array.isArray(recipeIds) || recipeIds.length === 0) {
       return Response.json({ error: "recipeIds ist erforderlich." }, { status: 400 });
@@ -117,6 +122,7 @@ export default {
     if (recipesError) {
       return Response.json({ error: recipesError.message }, { status: 500 });
     }
+    const tRecipesFetched = Date.now();
 
     const { data: household, error: householdError } = await ctx.supabase
       .from("households")
@@ -126,6 +132,7 @@ export default {
     if (householdError) {
       return Response.json({ error: householdError.message }, { status: 500 });
     }
+    const tHouseholdFetched = Date.now();
 
     const baseIngredients = household?.base_ingredients ?? [];
 
@@ -171,6 +178,7 @@ export default {
     }
 
     const anthropicData = await anthropicRes.json();
+    const tClaudeDone = Date.now();
     const toolUse = anthropicData.content?.find((c: { type: string }) => c.type === "tool_use");
     if (!toolUse) {
       return Response.json({ error: "Claude hat kein strukturiertes Ergebnis geliefert." }, {
@@ -224,6 +232,7 @@ export default {
       if (g.isBase) baseItems.push(item);
       else mainItems.push(item);
     }
+    const tAggregated = Date.now();
 
     // Zerlegte Zutaten in recipe_ingredients schreiben, aber nur für Rezepte,
     // die dort noch keine Zeilen haben (kein Überschreiben bestehender Daten).
@@ -248,8 +257,22 @@ export default {
         })),
       );
     }
+    const tBackfillDone = Date.now();
 
-    return Response.json({ mainItems, baseItems });
+    const timing = {
+      recipeCount: recipeIds.length,
+      recipesFetchMs: tRecipesFetched - t0,
+      householdFetchMs: tHouseholdFetched - tRecipesFetched,
+      claudeMs: tClaudeDone - tHouseholdFetched,
+      aggregationMs: tAggregated - tClaudeDone,
+      backfillMs: tBackfillDone - tAggregated,
+      totalMs: tBackfillDone - t0,
+      claudeUsage: anthropicData.usage ?? null,
+      promptChars: prompt.length,
+    };
+    console.log("aggregate-shopping-list timing:", JSON.stringify(timing));
+
+    return Response.json({ mainItems, baseItems, _timing: timing });
     })(req);
     return withCorsHeaders(req, res);
   },
